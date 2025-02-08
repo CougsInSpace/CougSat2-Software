@@ -96,38 +96,105 @@ void loop() {
   Wire.write(0x01);
   Wire.write(0b00000000);
   Wire.endTransmission();
+
   int highestReading =0;
   int desiredDiode=1;
-  for(int j=0;j<4;j++){
+
+  
+  Serial.println();
+   Serial.println("-X=");
+  Serial.println(readLightSensor(0));
+  Serial.println("Z=");
+  Serial.println(readLightSensor(1));
+  Serial.println("Y=");
+  Serial.println(readLightSensor(2));
+  Serial.println("X=");
+  Serial.println(readLightSensor(3));
+ 
+  
+for(int j=0;j<4;j++){
     int rawData = readLightSensor(j);
-    rawData = constrain(rawData, 0,100);
-    //Serial.println(rawData);
-    byte processedData= map(rawData,0,100,0,255);//turn from 5v reading to human readable data
-    //Serial.println(processedData);
-    if (processedData>highestReading){
-      highestReading=processedData;
+    bool highestFlag = false;
+    if (rawData>(highestReading+5)){//If the new reading is notably highest
+      highestReading=rawData;
+      highestFlag = true;
     }
+    switch (j){
+      case(0):
+        if(highestFlag){
+           Serial.println("\n-X is highest\n");
+           Serial.println("\n Roll right\n");
+            writeLedBrightness(0,0);
+          writeLedBrightness(0,1);
+          writeLedBrightness(0,2);
+          writeLedBrightness(0,3);
+        }
+       
+      break;
+      case(1):
+        if(highestFlag){
+          Serial.println("\nZ is highest\n"); 
+          Serial.println("\n At desired diode\n");
+          //Celebrate
+          writeLedBrightness(255,0);
+          writeLedBrightness(255,1);
+          writeLedBrightness(255,2);
+          writeLedBrightness(255,3);
+        }
+        
+      break;
+      case(2):
+        if(highestFlag){
+          Serial.println("\nY is highest\n");
+          Serial.println("\n Pitch down\n");
+          writeLedBrightness(0,0);
+          writeLedBrightness(0,1);
+          writeLedBrightness(0,2);
+          writeLedBrightness(0,3); 
+        }
+        
+      break;
+      case(3):
+        if(highestFlag){
+          Serial.println("\nX is highest\n");
+          Serial.println("\n Roll Left\n");
+          writeLedBrightness(0,0);
+          writeLedBrightness(0,1);
+          writeLedBrightness(0,2);
+          writeLedBrightness(0,3);
+        }
+        
+      break;
+      case(4):
+        if(highestFlag){
+          Serial.println("\n-Y is highest\n");
+          Serial.println("\n Pitch Up\n");
+          writeLedBrightness(0,0);
+          writeLedBrightness(0,1);
+          writeLedBrightness(0,2);
+          writeLedBrightness(0,3);
+        }
+        
+      break;
+      case(5):
+        if(highestFlag){
+          Serial.println("\n-Z is highest\n");
+          Serial.println("\n Roll Right/Left OR Pitch Up/Down\n");
+          writeLedBrightness(0,0);
+          writeLedBrightness(0,1);
+          writeLedBrightness(0,2);
+          writeLedBrightness(0,3);
+        }
+        
+      break;
+    }
+    
   }
   //Get desired diode
   int desiredRaw = readLightSensor(desiredDiode);
-  desiredRaw = constrain(desiredRaw, 0,100);
-  byte desiredProcessed= map(desiredRaw,0,100,0,255);
+  
 
-  if(desiredProcessed>= (highestReading-20)){
-      writeLedBrightness(255,1);
-      writeLedBrightness(255,2);
-      writeLedBrightness(255,3);
-      writeLedBrightness(255,4);
-  }
-  else{
-    writeLedBrightness(0,1);
-    writeLedBrightness(0,2);
-    writeLedBrightness(0,3);
-    writeLedBrightness(0,4);
-  }
-  Serial.println("Highest + Desired");
-  Serial.println(highestReading);
-  Serial.println(desiredProcessed);
+
   //Needs some form of debounce
   delay(500);
 }
