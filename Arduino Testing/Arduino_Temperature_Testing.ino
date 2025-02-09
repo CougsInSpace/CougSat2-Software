@@ -1,6 +1,8 @@
+
 #include <Wire.h> 
 #include <TLC59116.h>
 #include <Serial.h>
+#include <math.h>
 
 byte read(int i){
   Wire.beginTransmission(0x68);
@@ -63,15 +65,18 @@ void loop() {
  
   //||IMPORTANT||
   //STEINHART HART EQUATIONS CONSTANTS
-  double steinA=1.116979384
-  double steinB=2.369547544
-  double steinC=0.6984901072
-
-
+  double steinA=0.001135590635;
+  double steinB=0.0002341911173;
+  double steinC=0.00000007879679525;
+  totalResist = 10000;
+  //Calc temp in C using formula
+  //1/A+B*ln(R)+C*(ln(R))^3
+  double tempC = 1 / (0.0011355906347799041 + 0.0002341911172955573 * 9.21034037198 + 7.879679525327714e-8 * 9.21034037198 * 9.21034037198 * 9.21034037198);
+ 
 
   //float voltTemp = resist4/(resist4+resist1) * temp
   //voltage from 0-1024 needs to be converted into resistance
-  Serial.println(temperatureV);
+  Serial.println(tempC);
   //Serial.println(totalResist);
   delay(100);
 }

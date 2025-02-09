@@ -184,7 +184,7 @@ for(int j=0;j<4;j++){
           writeLedBrightness(0,1);
           writeLedBrightness(0,2);
           writeLedBrightness(0,3);
-        }
+        } 
         
       break;
     }
