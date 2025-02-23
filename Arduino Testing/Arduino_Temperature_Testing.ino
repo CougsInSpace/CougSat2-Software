@@ -54,29 +54,35 @@ void setup() {
 }
 
 void loop() {
+  double convertedV =5;
+  double r =10000;
   // put your main code here, to run repeatedly:
-  double temperatureV = analogRead(A4);
+  double analogV = analogRead(A4);
   int resist4 = 10000; //10kOhms
   int inputV = 5; //Arduino is 5v RP2040 is 3.3v;
   double totalResist = -1;
-  if (temperatureV != 5){
-      totalResist = (-resist4*temperatureV)/(temperatureV-5);
+  if (analogV < 1024){
+    convertedV = analogV/204.80;
+    resist4 = resist4*convertedV*-.1;
+    r  = resist4/(convertedV-inputV);
+
+
   }
  
   //||IMPORTANT||
   //STEINHART HART EQUATIONS CONSTANTS
-  double steinA=0.001135590635;
-  double steinB=0.0002341911173;
-  double steinC=0.00000007879679525;
-  totalResist = 10000;
-  //Calc temp in C using formula
-  //1/A+B*ln(R)+C*(ln(R))^3
-  double tempC = 1 / (0.0011355906347799041 + 0.0002341911172955573 * 9.21034037198 + 7.879679525327714e-8 * 9.21034037198 * 9.21034037198 * 9.21034037198);
- 
+  double a = (2.108508173*pow(10,-3));
+  double b= (0.7979204727*pow(10,-4));
+  double c = (6.535076315 * pow(10,-7));
+  
+  double tempK = 1/(a+(b*log(r)+(c*pow(log(r),3))));
+  double tempC = tempK-273.15;
 
   //float voltTemp = resist4/(resist4+resist1) * temp
   //voltage from 0-1024 needs to be converted into resistance
   Serial.println(tempC);
+  // Serial.println(convertedV);
+  // Serial.println(r);
   //Serial.println(totalResist);
   delay(100);
 }
