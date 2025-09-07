@@ -42,7 +42,10 @@ int main()
     gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C); // Set SCL pin to I2C function
     gpio_pull_up(I2C_SDA_PIN); // Enable pull-up resistor on SDA pin
     gpio_pull_up(I2C_SCL_PIN); // Enable pull-up resistor on SCL pin
-  
+    //setup heartbeat led 
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
     //do config for the led breakout  board 
     //write to the board at a specific register
     //then you can write what you actually want changed at that register lmao
@@ -66,6 +69,12 @@ int main()
     
 
     while (true) {
+        //blink led
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(250);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+        sleep_ms(250);
+        
         gpio_init(18);
         gpio_set_dir(18, GPIO_OUT); 
         gpio_put(18,1);//writes 13 to high, enables system. 
