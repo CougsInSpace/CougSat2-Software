@@ -94,15 +94,15 @@ int main()
         writeBrightness(255, 2);//test brightness for LED 3
         printf("\n");
         writeBrightness(255,3);
-        int lightReading0 = readLightSensor(0); // Read from the first light sensor (diode 1)
+        int lightReading0 = readLightSensor(0); // Read from the first light sensor (diode 0)
         printf("Light Reading 0:\n"); 
         printf("%i \n",lightReading0);
 
-        int lightReading1 = readLightSensor(1); // Read from the first light sensor (diode 1)
+        int lightReading1 = readLightSensor(1); // Read from the second light sensor (diode 1)
         printf("Light Reading 1:\n"); 
         printf("%i \n",lightReading1);
 
-        int lightReading2 = readLightSensor(2); // Read from the first light sensor (diode 1)
+        int lightReading2 = readLightSensor(2); // Read from the third light sensor (diode 2)
         printf("Light Reading 2:\n"); 
         printf("%i \n",lightReading2);
         
