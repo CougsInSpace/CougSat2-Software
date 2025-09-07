@@ -1,2 +1,2 @@
 # CougSat-2 Software
- Software Database for CougSat-2
+This is the main folder for satellite code, master is deprecated. 
