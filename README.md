@@ -17,3 +17,9 @@ https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#group_hardware_
 -------------------------------
 https://github.com/raspberrypi/picotool
 Use picotool reboot -f -u to reset into bootsel without physically unplugging
+
+
+CAN Documentation
+--------------
+https://github.com/KevinOConnor/can2040
+Can bus for RP2040
