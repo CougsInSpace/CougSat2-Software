@@ -19,13 +19,15 @@ void setup() {
   elbowServo.attach(ELBOW_SERVO_PIN);
   elbowServo.writeMicroseconds(1500);
 
-  //1000 = 360 degrees 1500 == 180 degrees 2000 = 0 degrees
-  float shoulderAngle = 1500; //180 degrees
-  float elbowAngle = 1500;
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  //1000 = 360 degrees 1500 == 180 degrees 2000 = 0 degrees
+  float shoulderAngle = 1500; //180 degrees
+  float elbowAngle = 1500;
+  
   shoulderServo.writeMicroseconds(shoulderAngle);
   elbowServo.writeMicroseconds(elbowAngle);
 }
