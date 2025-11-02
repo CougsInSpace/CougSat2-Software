@@ -23,3 +23,7 @@ CAN Documentation
 --------------
 https://github.com/KevinOConnor/can2040
 Can bus for RP2040
+
+**SPI CAMERA FOR PICO**
+----------------------
+https://www.arducam.com/presale-mega-5mp-color-rolling-shutter-camera-module-with-autofocus-lens-for-any-microcontroller.html
