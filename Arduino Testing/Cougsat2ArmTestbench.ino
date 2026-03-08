@@ -31,16 +31,15 @@ void loop() {
   //1000 = 360 degrees 1500 == 180 degrees 2000 = 0 degrees
   xvalue = analogRead(JOYSTICK_X_PIN);
   xvalue = map(xvalue, 0, 1023, 0, 180);
-  Serial.println(xvalue);
   if(timer<=1000){
     shoulderServo.write(xvalue);
-    elbowServo.write(180);
-    rotationServo.write(180);
+    elbowServo.write(xvalue);
+    rotationServo.write(xvalue);
   }
   else if (timer <= 2000){
     shoulderServo.write(xvalue);
-    elbowServo.write(0);
-    rotationServo.write(0);
+    elbowServo.write(xvalue);
+    rotationServo.write(xvalue);
   }
   else{
     timer = 0;
