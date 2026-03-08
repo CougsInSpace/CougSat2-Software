@@ -1,146 +1,126 @@
-// This is a simple example program using can2040 and the PICO SDK.
-//
-// See the CMakeLists.txt file for information on compiling.
+/**
+ * CAN Sender Example for RP2040
+ * Sends integer 50 to receiver, waits for doubled value (100) back
+ * Uses can2040 library: https://github.com/KevinOConnor/can2040
+ */
 
-#include <pico/stdlib.h>
 #include <stdio.h>
-
+#include "pico/stdlib.h"
+#include "hardware/irq.h"
+#include "hardware/gpio.h"
+#include "pico/multicore.h"  // For get_core_num() alternative
 #include "can2040/can2040.h"
 
+// CAN message IDs
+#define CAN_ID_SEND     0x100  // Sender -> Receiver (carries original number)
+#define CAN_ID_RESPONSE 0x200  // Receiver -> Sender (carries doubled number)
 
-#ifndef LED_DELAY_MS
-#define LED_DELAY_MS 250
-#endif
+// CAN timing for 500kbps (adjust for your transceiver)
+#define CAN_BITRATE     500000
 
-// Perform initialisation
-int pico_led_init(void) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    // A device like Pico that uses a GPIO for the LED will define PICO_DEFAULT_LED_PIN
-    // so we can use normal GPIO functionality to turn the led on and off
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    return PICO_OK;
-#elif defined(CYW43_WL_GPIO_LED_PIN)
-    // For Pico W devices we need to initialise the driver etc
-    return cyw43_arch_init();
-#endif
-}
+// GPIO pins for CAN transceiver
+#define CAN_GPIO_TX     5   // Connect to CAN transceiver TX
+#define CAN_GPIO_RX     4  // Connect to CAN transceiver RX
 
-// Turn the led on or off
-void pico_set_led(bool led_on) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    // Just set the GPIO on or off
-    gpio_put(PICO_DEFAULT_LED_PIN, led_on);
-#elif defined(CYW43_WL_GPIO_LED_PIN)
-    // Ask the wifi "driver" to set the GPIO on or off
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-#endif
-}
-
-// Simple example of irq safe queue (this is not multi-core safe)
-#define QUEUE_SIZE 128 // Must be power of 2
-static struct {
-    uint32_t pull_pos;
-    volatile uint32_t push_pos;
-    struct can2040_msg queue[QUEUE_SIZE];
-} MessageQueue;
-
-// Internal storage for can2040 module
+// Global CAN structure
 static struct can2040 cbus;
 
-// Main canbus callback (called from irq handler)
-static void
-can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
-{
-    if (notify == CAN2040_NOTIFY_RX) {
-        // Example message filter
-        uint32_t id = msg->id;
-        if (id < 0x101 || id > 0x201)
-            return;
-
-        // Add to queue
-        uint32_t push_pos = MessageQueue.push_pos;
-        uint32_t pull_pos = MessageQueue.pull_pos;
-        if (push_pos + 1 == pull_pos)
-            // No space in queue
-            return;
-        MessageQueue.queue[push_pos % QUEUE_SIZE] = *msg;
-        MessageQueue.push_pos = push_pos + 1;
-    }
-}
-
-// PIO interrupt handler
 static void
 PIOx_IRQHandler(void)
 {
     can2040_pio_irq_handler(&cbus);
 }
 
-// Initialize the can2040 module
-void
-canbus_setup(void)
+// Callback function for CAN events
+static void can2040_callback(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    uint32_t pio_num = 0;
-    uint32_t sys_clock = SYS_CLK_HZ, bitrate = 500000;
-    uint32_t gpio_rx = 4, gpio_tx = 5;
+    if (notify == CAN2040_NOTIFY_RX) {
+        // Check if it's a response message
+        if (msg->id == CAN_ID_RESPONSE && msg->dlc >= 4) {
+            // Reconstruct the 32-bit integer from data bytes
+            int32_t received_value = msg->data[0] |
+                                     (msg->data[1] << 8) |
+                                     (msg->data[2] << 16) |
+                                     ((int32_t)msg->data[3] << 24);
+            
+            printf("Received doubled value: %ld\n", received_value);
+            
+            if (received_value == 100) {
+                printf("SUCCESS: 50 doubled to 100!\n");
+            } else {
+                printf("ERROR: Expected 100, got %ld\n", received_value);
+            }
+        }
+    }
+}
 
-    // Setup canbus
+// Setup CAN interface
+static void can_setup(void)
+{
+    uint32_t pio_num =0;
+    uint32_t sys_clock = SYS_CLK_HZ;  // RP2040 default clock
+    uint32_t bitrate = CAN_BITRATE;
+    uint32_t gpio_rx = CAN_GPIO_RX;
+    uint32_t gpio_tx = CAN_GPIO_TX;
+    // Initialize can2040 module
     can2040_setup(&cbus, pio_num);
-    can2040_callback_config(&cbus, can2040_cb);
+    
+    // Register callback
+    can2040_callback_config(&cbus, can2040_callback);
+    
 
-    // Enable irqs
     irq_set_exclusive_handler(PIO0_IRQ_0, PIOx_IRQHandler);
     irq_set_priority(PIO0_IRQ_0, 1);
     irq_set_enabled(PIO0_IRQ_0, 1);
-
-    // Start canbus
-    can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);
+    // Start CAN on core 0 (main core)
+    // The second parameter is the PIO block number (0 or 1)
+    // On RP2040, core 0 uses PIO 0, core 1 uses PIO 1
+    can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);  // Use PIO 0 for core 0
 }
 
-int
-main(void)
+// Send a 32-bit integer over CAN
+int can_send_int(uint32_t id, int32_t value)
 {
+    struct can2040_msg msg;
+    
+    msg.id = id;
+    msg.dlc = 4;
+
+    msg.data[0] = value & 0xFF;
+    msg.data[1] = (value >> 8) & 0xFF;
+    msg.data[2] = (value >> 16) & 0xFF;
+    msg.data[3] = (value >> 24) & 0xFF;
+    
+    return can2040_transmit(&cbus, &msg);
+}
+
+int main()
+{
+    // Initialize stdio for debug output
     stdio_init_all();
-    canbus_setup();
-
+    sleep_ms(2000);  // Wait for USB serial to connect
+    printf("CAN Sender starting...\n");
+    
+    // Setup CAN
+    can_setup();
+    printf("CAN initialized at %d bps\n", CAN_BITRATE);
+    
     // Main loop
-    for (;;) {
-        int rc = pico_led_init();
-        hard_assert(rc == PICO_OK);
-        pico_set_led(true);
-        sleep_ms(LED_DELAY_MS);
-        pico_set_led(false);
-        sleep_ms(LED_DELAY_MS);
-        printf("Hello, CAN bus!\n");
-
-        uint32_t push_pos = MessageQueue.push_pos;
-        uint32_t pull_pos = MessageQueue.pull_pos;
-        if (push_pos == pull_pos)
-            // No new messages read.
-            printf("Waiting for messages...\n");
-            continue;
-
-        // Pop message from local receive queue
-        struct can2040_msg *qmsg = &MessageQueue.queue[pull_pos % QUEUE_SIZE];
-        struct can2040_msg msg = *qmsg;
-        MessageQueue.pull_pos++;
-
-        // Report message found on local receive queue
-        printf("msg: id=0x%x dlc=%d data=%02x%02x%02x%02x%02x%02x%02x%02x\n",
-               msg.id, msg.dlc, msg.data[0], msg.data[1], msg.data[2],
-               msg.data[3], msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
-
-        // Demo of message transmit
-        if (msg.id == 0x101) {
-            struct can2040_msg tmsg;
-            tmsg.id = 0x102;
-            tmsg.dlc = 8;
-            tmsg.data32[0] = 0xabcd;
-            tmsg.data32[1] = msg.data32[0];
-            int sts = can2040_transmit(&cbus, &tmsg);
-            printf("Sent message (status=%d)\n", sts);
+    while (true) {
+        // Send the number 50 every 2 seconds
+        int32_t value_to_send = 50;
+        
+        printf("Sending value: %ld\n", value_to_send);
+        
+        if (can_send_int(CAN_ID_SEND, value_to_send) == 0) {
+            printf("Message sent successfully\n");
+        } else {
+            printf("Failed to send message\n");
         }
+        
+        // Wait before sending again
+        sleep_ms(2000);
     }
-
+    
     return 0;
 }
